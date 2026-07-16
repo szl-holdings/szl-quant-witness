@@ -37,8 +37,7 @@ console.log(r.ok ? 'OK ' + r.payload.predicate.summary.verdict : 'FAIL ' + r.rea
 | path | what |
 |---|---|
 | `observe.mjs` | the observer — clone, re-verify, live checkpoint, consistency replay, sign |
-| `observations/` | signed gossip observations (append-only) |
-| `OBSERVATIONS.md` | human index of every observation |
+| `observations` branch | signed gossip observations + `OBSERVATIONS.md` index (append-only data branch — same convention as szl-quant's `ledger` branch; `main` is code, PR-gated) |
 | `keys/observer_pubkey.json` | observer's public key (private key lives ONLY in this repo's Actions secret) |
 | `keys/rekor_pubkey.pem` | pinned Rekor public key (same pin as szl-quant — stated limit) |
 | `vendor/szl-quant/` | pinned primitives from the engine repo (`VENDOR.md` has the commit + hashes) |

@@ -21,18 +21,20 @@ jobs:
           OBSERVER_KEY_PEM: ${{ secrets.OBSERVER_KEY_PEM }}
         run: |
           umask 077
-          printf '%s' "$OBSERVER_KEY_PEM" > "$RUNNER_TEMP/observer_key.pem"
-          SZL_OBSERVER_KEY="$RUNNER_TEMP/observer_key.pem" node observe.mjs
-      - name: commit observation
+          printf '%s\n' "$OBSERVER_KEY_PEM" > "$RUNNER_TEMP/observer_key.pem"
+          git clone --quiet --depth 1 -b observations "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" obsdata
+          SZL_OBS_OUT=obsdata SZL_OBSERVER_KEY="$RUNNER_TEMP/observer_key.pem" node observe.mjs
+      - name: publish observation
         if: always()
         run: |
+          cd obsdata
           git config user.name 'szl-quant-witness observer'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add observations OBSERVATIONS.md || true
+          git add -A
           if git diff --cached --quiet; then
-            echo 'nothing to commit (observation unavailable — absence is honest)'
+            echo 'nothing to publish (observation unavailable — absence is honest)'
           else
-            git commit -m "obs: $(date -u +%FT%TZ) $(cat .last-verdict 2>/dev/null || echo UNAVAILABLE)"
+            git commit -m "obs: $(date -u +%FT%TZ) $(cat ../.last-verdict 2>/dev/null || echo UNAVAILABLE)"
             git push
           fi
       - name: alarm gate

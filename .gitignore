@@ -5,3 +5,4 @@ node_modules/
 .last-verdict
 .work-ledger/
 .DS_Store
+obsdata/

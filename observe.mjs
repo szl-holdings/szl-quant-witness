@@ -32,6 +32,7 @@ export const PREDICATE_OBSERVATION = 'https://szl.holdings/quant/gossip-observat
 export const OBS_FILE_RE = /^obs_(\d{4})_\d+\.observation\.json$/;
 const LEDGER_REPO = 'https://github.com/szl-holdings/szl-quant.git';
 const HERE = new URL('.', import.meta.url).pathname;
+const OUT = process.env.SZL_OBS_OUT ?? HERE; // data branch worktree in CI; repo root locally
 
 const sha256Hex = (b) => createHash('sha256').update(b).digest('hex');
 const sh = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8' }).trim();
@@ -161,10 +162,10 @@ async function main() {
   const self = verifyEnvelope(envelope, publicKey);
   if (!self.ok) throw new Error(`self-verification failed after signing: ${self.reason}`);
 
-  mkdirSync(join(HERE, 'observations'), { recursive: true });
+  mkdirSync(join(OUT, 'observations'), { recursive: true });
   const fname = `obs_${String(seq).padStart(4, '0')}_${Date.now()}.observation.json`;
-  writeFileSync(join(HERE, 'observations', fname), JSON.stringify(envelope, null, 2) + '\n');
-  const mdPath = join(HERE, 'OBSERVATIONS.md');
+  writeFileSync(join(OUT, 'observations', fname), JSON.stringify(envelope, null, 2) + '\n');
+  const mdPath = join(OUT, 'OBSERVATIONS.md');
   if (!existsSync(mdPath)) writeFileSync(mdPath, '# Observations — second-observer gossip log\n\n| observed (UTC) | head seq | verdict | live tree size | file |\n|---|---|---|---|---|\n');
   appendFileSync(mdPath, `| ${nowIso} | ${seq} | ${verdict} | ${lCp.treeSize} | \`${fname}\` |\n`);
   writeFileSync(join(HERE, '.last-verdict'), verdict + '\n');
