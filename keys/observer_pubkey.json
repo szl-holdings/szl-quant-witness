@@ -1,0 +1,8 @@
+{
+  "kind": "szl-quant-observer-pubkey",
+  "v": 1,
+  "alg": "ed25519",
+  "keyId": "712046f22b6c6292",
+  "publicKeySpkiBase64": "MCowBQYDK2VwAyEAbbD91mP6Wb8qfl9tXrQlRn8Wb6l1WeTmgaNwQqkPWiI=",
+  "note": "Gossip-observer signing identity. Private key lives ONLY in the szl-quant-witness Actions secret OBSERVER_KEY_PEM — not in any repo."
+}

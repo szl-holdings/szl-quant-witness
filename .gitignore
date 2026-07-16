@@ -1,0 +1,7 @@
+node_modules/
+*.pem
+# public transparency-log key pin — explicitly NOT a private key
+!keys/rekor_pubkey.pem
+.last-verdict
+.work-ledger/
+.DS_Store
