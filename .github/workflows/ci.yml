@@ -1,0 +1,37 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+      - name: syntax check observe.mjs
+        run: node --check observe.mjs
+      - name: vendored primitives match VENDOR.md pins
+        run: |
+          node --input-type=module -e "
+          import { readFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const vendor = readFileSync('VENDOR.md', 'utf8');
+          const re = /\`(vendor\/[^\`]+)\` — sha256 \`([0-9a-f]{64})\`/g;
+          let m; let checked = 0; let failed = false;
+          while ((m = re.exec(vendor))) {
+            const [, path, want] = m;
+            const got = createHash('sha256').update(readFileSync(path)).digest('hex');
+            if (got !== want) { console.error('MISMATCH ' + path + ': VENDOR.md says ' + want + ', on-disk is ' + got); failed = true; }
+            else console.log('OK ' + path);
+            checked++;
+          }
+          if (checked === 0) { console.error('no pins found in VENDOR.md — check the regex/format'); process.exit(1); }
+          if (failed) { console.error('vendored primitives drifted from their stated pins — refresh VENDOR.md by PR, per its own instructions'); process.exit(1); }
+          console.log('all ' + checked + ' vendored file(s) match their VENDOR.md pin.');
+          "

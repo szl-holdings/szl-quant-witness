@@ -16,6 +16,19 @@ A split view — Rekor showing this observer a different history than it showed 
 
 Observations are **REPORTED**: network reads of a public git remote and the Rekor API at observation time; every checkable claim (note signatures, consistency proof) is replayed offline *before* signing. Stated plainly: both repos live in one GitHub org under one maintainer — this adds a second vantage point, schedule, and key, **not** a second operator. The Rekor pin is shared with the observed repo; a wrong pin blinds both observers but cannot forge Rekor's signatures.
 
+## Maturity & horizon
+
+**This repo is young.** Observation start: `2026-07-16T20:33:37Z` (first commit); first published observation `2026-07-16T20:35:37Z`. Cadence: scheduled every 6h, offset ~3h from the engine's own schedule (`.github/workflows/observe.yml`), plus `workflow_dispatch` for manual runs. As of this writing the `observations` branch holds a handful of entries spanning under a day.
+
+What that means, stated plainly:
+
+- The cross-witness **signal** — a second vantage point independently re-deriving the same Rekor checkpoints and replaying the same consistency proof — strengthens with **observation history**, not with any single observation. One clean `PREFIX_OK` says the two vantage points agreed once; it says nothing about resilience to an outage, a delayed schedule, or a log event that only shows up between scheduled runs.
+- Until a meaningful horizon accumulates (weeks of unbroken cadence, multiple log-checkpoint growth cycles, at least one exercised failure path), this observer's output should be cited as **REPORTED single-operator corroboration** — a second script, key, and schedule inside the same GitHub org and under the same maintainer — **not independent third-party verification**. Both repos still share one operator; that is stated in every observation (`limits[]`) and in `szl-quant`'s own README, and this section does not relax it.
+- No amount of elapsed time upgrades this into proof of anything beyond what the RFC 6962 math itself proves (checkpoint signatures, inclusion, consistency). It only makes the *absence of a missed or failed observation* more informative — a long, unbroken run of `PREFIX_OK`/`ROOTS_EQUAL` with no gaps is evidence the schedule and signing path are healthy, not evidence of predictive edge, trading performance, or "true" independence.
+- Gaps count against maturity, not around it: missed runs, `workflow_dispatch` backfills, and any non-`PREFIX_OK`/`ROOTS_EQUAL` verdict are visible in `OBSERVATIONS.md`'s append-only history and in this repo's own Actions run log — nothing here is trimmed to look cleaner than it is.
+
+Practically: cite this repo today as "a second script, in the same org, corroborating the ledger head — REPORTED, single-operator" and revisit that language as real history accumulates. It does not become "independent third-party verification" merely by staying up.
+
 ## Verify an observation
 
 Each observation is a standard DSSE envelope over an in-toto Statement. Independent verification (including cross-checking observations against the engine's own witness receipts) ships in szl-quant's `verify/verify.mjs` — see that repo's README. Quick standalone signature check:
@@ -41,6 +54,7 @@ console.log(r.ok ? 'OK ' + r.payload.predicate.summary.verdict : 'FAIL ' + r.rea
 | `keys/observer_pubkey.json` | observer's public key (private key lives ONLY in this repo's Actions secret) |
 | `keys/rekor_pubkey.pem` | pinned Rekor public key (same pin as szl-quant — stated limit) |
 | `vendor/szl-quant/` | pinned primitives from the engine repo (`VENDOR.md` has the commit + hashes) |
-| `.github/workflows/observe.yml` | every 6h, offset from the engine's schedule; SHA-pinned actions |
+| `.github/workflows/observe.yml` | every 6h, offset from the engine's schedule; SHA-pinned actions; a failing/alarming verdict turns the run red (non-zero exit) |
+| `.github/workflows/ci.yml` | on every push/PR to `main`: syntax-checks `observe.mjs` and confirms the vendored primitives still match their `VENDOR.md` sha256 pins — catches a broken or silently-drifted commit before the next scheduled run hits it |
 
 <sub>SZL Holdings · [a-11-oy.com](https://a-11-oy.com) · Doctrine v11 · REPORTED observations, replayed offline before signing · Apache-2.0 · **paper-only estate, not financial advice**</sub>
