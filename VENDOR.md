@@ -11,3 +11,9 @@ not a novel codebase. Refresh only by PR that states the new pin.
 - `vendor/szl-quant/dsse.mjs` — sha256 `0f51da1d5ec941ace109669b7409d3173c1b9a425f5a45d424b1ca1dda6c6f0d`
 - `vendor/szl-quant/keys.mjs` — sha256 `35e009e7bde29df66d8cbf44b488231a3fbe4bd750f49ae2e5142af43b37a9e7`
 - `vendor/szl-quant/witness.mjs` — sha256 `b3daafcb2fb411de79f93b588d58e0a089e792bfd3227c96e2745fdc1adb9313`
+- `keys/engine_pubkey.json` — sha256 `49d229951086d3f46a66db0f0c15417811d416c0ced35ab1987f8fb773c4c9c2`
+
+`keys/engine_pubkey.json` is the exact engine verification key from the same pinned
+`szl-quant` revision. The observer uses it as an out-of-band trust pin for the
+engine witness DSSE signature; legitimate engine-key rotation therefore requires
+an explicit source PR that advances this pin before new receipts are accepted.
