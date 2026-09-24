@@ -26,6 +26,7 @@ import { canonicalBytes } from './vendor/szl-quant/canonical-json.mjs';
 import { signEnvelope, verifyEnvelope } from './vendor/szl-quant/dsse.mjs';
 import { loadPrivateKey, keyIdFromPublicKey } from './vendor/szl-quant/keys.mjs';
 import { verifyCheckpoint, rfc6962VerifyConsistency, WITNESS_FILE_RE, REKOR_SERVER } from './vendor/szl-quant/witness.mjs';
+import { assertWitnessFilenameBinding, verifyEngineWitnessEnvelope } from './engine-witness.mjs';
 
 const IN_TOTO_STATEMENT = 'https://in-toto.io/Statement/v1';
 export const PREDICATE_OBSERVATION = 'https://szl.holdings/quant/gossip-observation/v1';
@@ -46,6 +47,7 @@ async function main() {
   }
   const publicKey = createPublicKey(privateKey);
   const rekorPin = readFileSync(join(HERE, 'keys/rekor_pubkey.pem'), 'utf8');
+  const enginePin = JSON.parse(readFileSync(join(HERE, 'keys/engine_pubkey.json'), 'utf8'));
 
   // 1 — independent shallow clone of the public ledger branch
   const work = join(HERE, '.work-ledger');
@@ -65,9 +67,9 @@ async function main() {
   }
   const wBytes = readFileSync(join(wDir, wName));
   const wSha = sha256Hex(wBytes);
-  const st = JSON.parse(Buffer.from(JSON.parse(wBytes.toString('utf8')).payload, 'base64').toString('utf8'));
-  const summary = st.predicate?.summary;
-  if (summary?.kind !== 'szl-quant-witness') throw new Error(`unexpected witness receipt kind: ${summary?.kind}`);
+  const wEnvelope = JSON.parse(wBytes.toString('utf8'));
+  const { summary, engineKeyId } = verifyEngineWitnessEnvelope(wEnvelope, enginePin);
+  assertWitnessFilenameBinding(wName, summary);
   const seq = summary.chain.seq;
 
   // 3 — re-verify the head binding with our own hands
@@ -139,6 +141,7 @@ async function main() {
       headSeq: seq, witnessFile: wName, witnessSha256: wSha,
       chainRunDir: summary.chain.runDir, chainFile: summary.chain.file,
       chainSha256: summary.chain.sha256, chainBindingVerified,
+      engineWitnessKeyId: engineKeyId, engineWitnessSignatureVerified: true,
     },
     engineCheckpoint: { origin: eCp.origin, treeSize: eCp.treeSize, rootHex: eCp.rootHashHex, source: 'newest witness receipt inclusionProof.checkpoint', noteVerified: true },
     liveCheckpoint: { origin: lCp.origin, treeSize: lCp.treeSize, rootHex: lCp.rootHashHex, rawNote: log.signedTreeHead, noteVerified: true, fetchedAtIso: nowIso },
@@ -146,8 +149,8 @@ async function main() {
     verdict,
     limits: [
       'both repos live in one GitHub org under one maintainer — a second vantage point and key, NOT a second operator; stated, not hidden',
-      'REPORTED: reads a public git remote and the Rekor API at observation time; checkpoint signatures and the consistency proof are replayed offline before signing',
-      'the rekor public-key pin is shared with the observed repo: a wrong pin blinds both observers, but cannot forge Rekor note signatures',
+      'REPORTED: reads a public git remote and the Rekor API at observation time; the engine witness signature, checkpoint signatures, and consistency proof are replayed before signing',
+      'the source-owned engine and rekor public-key pins must be advanced by reviewed source change on legitimate key rotation; stale/wrong pins fail closed',
     ],
     note: 'gossip observation: a split view between what Rekor shows this observer and what it showed the engine becomes signed evidence here',
   };
@@ -170,7 +173,7 @@ async function main() {
   appendFileSync(mdPath, `| ${nowIso} | ${seq} | ${verdict} | ${lCp.treeSize} | \`${fname}\` |\n`);
   writeFileSync(join(HERE, '.last-verdict'), verdict + '\n');
   rmSync(work, { recursive: true, force: true });
-  console.log(`OBSERVATION ${verdict}  head seq ${seq} (ledger ${ledgerCommit.slice(0, 7)})  engine checkpoint ${eCp.treeSize} → live ${lCp.treeSize}  → observations/${fname}  [REPORTED, consistency replayed offline before signing]`);
+  console.log(`OBSERVATION ${verdict}  head seq ${seq} (ledger ${ledgerCommit.slice(0, 7)})  engine checkpoint ${eCp.treeSize} → live ${lCp.treeSize}  → observations/${fname}  [REPORTED, source signature + consistency replayed before signing]`);
 }
 
 main().catch((e) => { console.error('OBSERVER FAILED:', e.message); process.exit(1); });
