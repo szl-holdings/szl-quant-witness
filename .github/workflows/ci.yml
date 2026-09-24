@@ -10,19 +10,35 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Checkout exact event source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - name: Prove exact event source
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EXPECTED_SHA"
+          echo "exact source verified: $actual"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
-      - name: syntax check observe.mjs
-        run: node --check observe.mjs
-      - name: vendored primitives match VENDOR.md pins
+      - name: syntax check observer source
+        run: |
+          node --check observe.mjs
+          node --check engine-witness.mjs
+      - name: witness signature regression tests
+        run: node --test test/engine-witness.test.mjs
+      - name: vendored primitives and engine key match VENDOR.md pins
         run: |
           node --input-type=module -e "
           import { readFileSync } from 'node:fs';
           import { createHash } from 'node:crypto';
           const vendor = readFileSync('VENDOR.md', 'utf8');
-          const re = /\`(vendor\/[^\`]+)\` — sha256 \`([0-9a-f]{64})\`/g;
+          const re = /\`((?:vendor|keys)\/[^\`]+)\` — sha256 \`([0-9a-f]{64})\`/g;
           let m; let checked = 0; let failed = false;
           while ((m = re.exec(vendor))) {
             const [, path, want] = m;
@@ -32,6 +48,6 @@ jobs:
             checked++;
           }
           if (checked === 0) { console.error('no pins found in VENDOR.md — check the regex/format'); process.exit(1); }
-          if (failed) { console.error('vendored primitives drifted from their stated pins — refresh VENDOR.md by PR, per its own instructions'); process.exit(1); }
-          console.log('all ' + checked + ' vendored file(s) match their VENDOR.md pin.');
+          if (failed) { console.error('vendored/key material drifted from stated pins — refresh VENDOR.md by PR, per its own instructions'); process.exit(1); }
+          console.log('all ' + checked + ' vendored/key file(s) match their VENDOR.md pin.');
           "
