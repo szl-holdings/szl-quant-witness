@@ -1,0 +1,8 @@
+{
+  "kind": "szl-quant-engine-pubkey",
+  "v": 1,
+  "alg": "ed25519",
+  "keyId": "5c6cf59741ade920",
+  "publicKeySpkiBase64": "MCowBQYDK2VwAyEArBOmZZSDK+n7Qq1HJYbqNuX9YymnsRWbzSGHHnhsERM=",
+  "note": "Engine signing identity for advisory signal receipts. Private key is NOT in this repo."
+}
