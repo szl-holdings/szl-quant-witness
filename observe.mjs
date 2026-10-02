@@ -19,7 +19,7 @@
  * single-process vantage limit, NOT the single-operator limit, and says so.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, appendFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { createHash, createPublicKey } from 'node:crypto';
 import { join } from 'node:path';
 import { canonicalBytes } from './vendor/szl-quant/canonical-json.mjs';
@@ -27,6 +27,7 @@ import { signEnvelope, verifyEnvelope } from './vendor/szl-quant/dsse.mjs';
 import { loadPrivateKey, keyIdFromPublicKey } from './vendor/szl-quant/keys.mjs';
 import { verifyCheckpoint, rfc6962VerifyConsistency, WITNESS_FILE_RE, REKOR_SERVER } from './vendor/szl-quant/witness.mjs';
 import { assertWitnessFilenameBinding, verifyEngineWitnessEnvelope } from './engine-witness.mjs';
+import { appendObservationIndex } from './observation-index.mjs';
 
 const IN_TOTO_STATEMENT = 'https://in-toto.io/Statement/v1';
 export const PREDICATE_OBSERVATION = 'https://szl.holdings/quant/gossip-observation/v1';
@@ -169,8 +170,7 @@ async function main() {
   const fname = `obs_${String(seq).padStart(4, '0')}_${Date.now()}.observation.json`;
   writeFileSync(join(OUT, 'observations', fname), JSON.stringify(envelope, null, 2) + '\n');
   const mdPath = join(OUT, 'OBSERVATIONS.md');
-  if (!existsSync(mdPath)) writeFileSync(mdPath, '# Observations — second-observer gossip log\n\n| observed (UTC) | head seq | verdict | live tree size | file |\n|---|---|---|---|---|\n');
-  appendFileSync(mdPath, `| ${nowIso} | ${seq} | ${verdict} | ${lCp.treeSize} | \`${fname}\` |\n`);
+  appendObservationIndex(mdPath, `| ${nowIso} | ${seq} | ${verdict} | ${lCp.treeSize} | \`${fname}\` |\n`);
   writeFileSync(join(HERE, '.last-verdict'), verdict + '\n');
   rmSync(work, { recursive: true, force: true });
   console.log(`OBSERVATION ${verdict}  head seq ${seq} (ledger ${ledgerCommit.slice(0, 7)})  engine checkpoint ${eCp.treeSize} → live ${lCp.treeSize}  → observations/${fname}  [REPORTED, source signature + consistency replayed before signing]`);

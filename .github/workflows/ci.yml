@@ -30,8 +30,9 @@ jobs:
         run: |
           node --check observe.mjs
           node --check engine-witness.mjs
+          node --check observation-index.mjs
       - name: witness signature regression tests
-        run: node --test test/engine-witness.test.mjs
+        run: node --test test/*.test.mjs
       - name: vendored primitives and engine key match VENDOR.md pins
         run: |
           node --input-type=module -e "
