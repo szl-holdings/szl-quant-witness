@@ -202,6 +202,20 @@ class CheckpointParseTests(unittest.TestCase):
             with self.assertRaises(vo.ObservationError, msg=i):
                 vo.parse_checkpoint(text)
 
+    def test_whitespace_class_matches_ecmascript(self):
+        # witness.mjs uses JS \s, which differs from Python's \s on U+FEFF
+        # (JS whitespace) and \x1c-\x1f, \x85 (Python whitespace only).
+        def variants(ch):
+            return (NOTE.replace("rekor.sigstore.dev - ", f"rekor{ch}sigstore.dev - ", 1),
+                    NOTE.replace("— rekor.sigstore.dev", f"— rekor{ch}x", 1))
+        for ch in ["﻿", " ", " ", "　", "\v"]:
+            for text in variants(ch):
+                with self.assertRaises(vo.ObservationError, msg=repr(ch)):
+                    vo.parse_checkpoint(text)
+        for ch in ["\x1c", "\x1f", "\x85", "​", "᠎"]:
+            for text in variants(ch):
+                self.assertEqual(vo.parse_checkpoint(text)["tree_size"], 3409884007, msg=repr(ch))
+
 
 class SignatureSkipGuard(unittest.TestCase):
     def test_signature_tests_cannot_skip_in_ci(self):
