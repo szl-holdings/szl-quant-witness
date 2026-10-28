@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       published: ${{ steps.publish.outputs.published }}
+      published_commit: ${{ steps.publish.outputs.published_commit }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -41,6 +42,7 @@ jobs:
             git commit -m "obs: $(date -u +%FT%TZ) $(cat ../.last-verdict 2>/dev/null || echo UNAVAILABLE)"
             git push
             echo "published=${published% }" >> "$GITHUB_OUTPUT"
+            echo "published_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           fi
       - name: alarm gate
         if: always()
@@ -72,11 +74,13 @@ jobs:
       - name: verify the published observation in Python (signature + log-evidence replay)
         env:
           PUBLISHED: ${{ needs.observe.outputs.published }}
+          PUBLISHED_COMMIT: ${{ needs.observe.outputs.published_commit }}
         run: |
           set -euo pipefail
           # Only the published JSON files are read from the observations
           # branch, as data; nothing from it is checked out or executed.
           git fetch --quiet --no-tags --depth=1 origin observations
+          test "$(git rev-parse FETCH_HEAD)" = "$PUBLISHED_COMMIT" || { echo "::error::observations branch advanced before verification"; exit 1; }
           mkdir -p "$RUNNER_TEMP/published"
           files=()
           for f in $PUBLISHED; do
