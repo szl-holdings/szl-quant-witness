@@ -52,3 +52,10 @@ jobs:
           if (failed) { console.error('vendored/key material drifted from stated pins — refresh VENDOR.md by PR, per its own instructions'); process.exit(1); }
           console.log('all ' + checked + ' vendored/key file(s) match their VENDOR.md pin.');
           "
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: python verifier — hash-pinned deps, cross-language tests against the vendored JS
+        run: |
+          python -m pip install --require-hashes --no-deps -r requirements-verify.txt
+          python -m unittest discover -s test -p 'test_*.py' -v
