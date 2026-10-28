@@ -216,9 +216,12 @@ def verify_observation(envelope, pin, rekor_pem=None):
 
 DEFAULT_REKOR_PIN = Path(__file__).resolve().parent / "keys" / "rekor_pubkey.pem"
 MAX_SAFE_INTEGER = 2**53 - 1
-_ORIGIN_RE = re.compile(r"[^\s]+ - [0-9]+")
+# ECMAScript \s (WhiteSpace + LineTerminator), as witness.mjs matches it;
+# Python's \s differs on U+FEFF, \x1c-\x1f and \x85.
+_JS_SPACE = "\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+_ORIGIN_RE = re.compile(f"[^{_JS_SPACE}]+ - [0-9]+")
 _TREE_SIZE_RE = re.compile(r"[0-9]+")
-_SIG_LINE_RE = re.compile("\u2014 ([^\\s]+) ([^\\s]+)")
+_SIG_LINE_RE = re.compile(f"\u2014 ([^{_JS_SPACE}]+) ([^{_JS_SPACE}]+)")
 _HEX32_RE = re.compile(r"[0-9a-fA-F]{64}")
 
 
