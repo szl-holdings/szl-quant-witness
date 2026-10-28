@@ -58,6 +58,13 @@ console.log(r.ok ? 'OK ' + r.payload.predicate.summary.verdict : 'FAIL ' + r.rea
 " observations/obs_0013_*.observation.json
 ```
 
+The same check in Python, against the pinned observer key (stricter on malformed input; it verifies only and never signs):
+
+```bash
+python -m pip install --require-hashes --no-deps -r requirements-verify.txt
+python verify_observation.py observations/obs_0013_*.observation.json
+```
+
 ## Repo map
 
 | path | what |
@@ -67,7 +74,9 @@ console.log(r.ok ? 'OK ' + r.payload.predicate.summary.verdict : 'FAIL ' + r.rea
 | `keys/observer_pubkey.json` | observer's public key (private key lives ONLY in this repo's Actions secret) |
 | `keys/rekor_pubkey.pem` | pinned Rekor public key (same pin as szl-quant — stated limit) |
 | `vendor/szl-quant/` | pinned primitives from the engine repo (`VENDOR.md` has the commit + hashes) |
+| `verify_observation.py` | Python verifier for published observations (DSSE, ed25519, pinned observer key); tested against the vendored JS on the same envelopes |
+| `requirements-verify.txt` | hash-pinned Python dependencies for the verifier (`cryptography` and its build chain) |
 | `.github/workflows/observe.yml` | every 6h, offset from the engine's schedule; SHA-pinned actions; a failing/alarming verdict turns the run red (non-zero exit) |
-| `.github/workflows/ci.yml` | on every push/PR to `main`: syntax-checks `observe.mjs` and confirms the vendored primitives still match their `VENDOR.md` sha256 pins — catches a broken or silently-drifted commit before the next scheduled run hits it |
+| `.github/workflows/ci.yml` | on every push/PR to `main`: syntax-checks `observe.mjs`, confirms the vendored primitives still match their `VENDOR.md` sha256 pins, and runs the Python verifier's tests against the vendored JS — catches a broken or silently-drifted commit before the next scheduled run hits it |
 
 <sub>SZL Holdings · [a-11-oy.com](https://a-11-oy.com) · Doctrine v11 · REPORTED observations, replayed offline before signing · Apache-2.0 · **paper-only estate, not financial advice**</sub>

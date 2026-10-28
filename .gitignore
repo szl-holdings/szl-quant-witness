@@ -6,3 +6,4 @@ node_modules/
 .work-ledger/
 .DS_Store
 obsdata/
+__pycache__/
