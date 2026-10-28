@@ -65,6 +65,12 @@ python -m pip install --require-hashes --no-deps -r requirements-verify.txt
 python verify_observation.py observations/obs_0013_*.observation.json
 ```
 
+The engine's own witness receipts (szl-quant's `ledger` branch, `witness/`) verify the same way against `keys/engine_pubkey.json`; the envelope's embedded key is never trusted. By default `verify_witness.py` also replays each receipt's Rekor anchor against `keys/rekor_pubkey.pem`: the entry must be the engine's rekord entry for this chain head, the SET must verify, and the RFC 6962 inclusion proof must land on the signed checkpoint. It prints `INCLUSION`, or `SET_ONLY` for the generation-1 receipt that has no proof; `--no-replay` limits it to the signature check:
+
+```bash
+python verify_witness.py witness/witness_0425_*.receipt.json
+```
+
 ## Repo map
 
 | path | what |
@@ -75,6 +81,7 @@ python verify_observation.py observations/obs_0013_*.observation.json
 | `keys/rekor_pubkey.pem` | pinned Rekor public key (same pin as szl-quant — stated limit) |
 | `vendor/szl-quant/` | pinned primitives from the engine repo (`VENDOR.md` has the commit + hashes) |
 | `verify_observation.py` | Python verifier for published observations (DSSE, ed25519, pinned observer key) that also replays the log evidence (Rekor checkpoint note, RFC 6962 consistency, recorded verdict); tested against the vendored JS on the same inputs |
+| `verify_witness.py` | Python twin of `engine-witness.mjs` plus the inclusion path of `vendor/szl-quant/witness.mjs`: verifies engine witness receipts under the pinned engine key and replays their Rekor anchor (entry binding, SET, RFC 6962 inclusion); tested against the vendored JS on the same inputs |
 | `requirements-verify.txt` | hash-pinned Python dependencies for the verifier (`cryptography` and its build chain) |
 | `.github/workflows/observe.yml` | every 6h, offset from the engine's schedule; SHA-pinned actions; a failing/alarming verdict turns the run red (non-zero exit); a read-only `verify-python` job then re-checks the observation just published with `verify_observation.py` (signature and log-evidence replay), and a refusal also turns the run red |
 | `.github/workflows/ci.yml` | on every push/PR to `main`: syntax-checks `observe.mjs`, confirms the vendored primitives still match their `VENDOR.md` sha256 pins, and runs the Python verifier's tests against the vendored JS — catches a broken or silently-drifted commit before the next scheduled run hits it |
