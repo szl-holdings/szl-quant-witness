@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       published: ${{ steps.publish.outputs.published }}
-      data_commit: ${{ steps.publish.outputs.data_commit }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -42,7 +41,6 @@ jobs:
             git commit -m "obs: $(date -u +%FT%TZ) $(cat ../.last-verdict 2>/dev/null || echo UNAVAILABLE)"
             git push
             echo "published=${published% }" >> "$GITHUB_OUTPUT"
-            echo "data_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           fi
       - name: alarm gate
         if: always()
@@ -68,13 +66,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Checkout the published observation commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.observe.outputs.data_commit }}
-          path: obsdata
-          fetch-depth: 1
-          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -83,10 +74,16 @@ jobs:
           PUBLISHED: ${{ needs.observe.outputs.published }}
         run: |
           set -euo pipefail
+          # Only the published JSON files are read from the observations
+          # branch, as data; nothing from it is checked out or executed.
+          git fetch --quiet --no-tags --depth=1 origin observations
+          mkdir -p "$RUNNER_TEMP/published"
           files=()
           for f in $PUBLISHED; do
             [[ "$f" =~ ^observations/obs_[0-9]{4}_[0-9]+\.observation\.json$ ]] || { echo "::error::unexpected published path: $f"; exit 1; }
-            files+=("obsdata/$f")
+            out="$RUNNER_TEMP/published/${f#observations/}"
+            git show "FETCH_HEAD:$f" > "$out"
+            files+=("$out")
           done
           python -m pip install --require-hashes --no-deps -r requirements-verify.txt
           python verify_observation.py "${files[@]}"
