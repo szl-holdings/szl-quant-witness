@@ -58,7 +58,7 @@ console.log(r.ok ? 'OK ' + r.payload.predicate.summary.verdict : 'FAIL ' + r.rea
 " observations/obs_0013_*.observation.json
 ```
 
-The same check in Python, against the pinned observer key (stricter on malformed input; it verifies only and never signs):
+The same check in Python, against the pinned observer key (stricter on malformed input; it verifies only and never signs). By default it also replays each observation's log evidence against `keys/rekor_pubkey.pem`: the live checkpoint's signed note must verify and match the signed fields, and the RFC 6962 consistency proof must replay to the recorded verdict. `--no-replay` limits it to the signature check:
 
 ```bash
 python -m pip install --require-hashes --no-deps -r requirements-verify.txt
@@ -74,7 +74,7 @@ python verify_observation.py observations/obs_0013_*.observation.json
 | `keys/observer_pubkey.json` | observer's public key (private key lives ONLY in this repo's Actions secret) |
 | `keys/rekor_pubkey.pem` | pinned Rekor public key (same pin as szl-quant — stated limit) |
 | `vendor/szl-quant/` | pinned primitives from the engine repo (`VENDOR.md` has the commit + hashes) |
-| `verify_observation.py` | Python verifier for published observations (DSSE, ed25519, pinned observer key); tested against the vendored JS on the same envelopes |
+| `verify_observation.py` | Python verifier for published observations (DSSE, ed25519, pinned observer key) that also replays the log evidence (Rekor checkpoint note, RFC 6962 consistency, recorded verdict); tested against the vendored JS on the same inputs |
 | `requirements-verify.txt` | hash-pinned Python dependencies for the verifier (`cryptography` and its build chain) |
 | `.github/workflows/observe.yml` | every 6h, offset from the engine's schedule; SHA-pinned actions; a failing/alarming verdict turns the run red (non-zero exit) |
 | `.github/workflows/ci.yml` | on every push/PR to `main`: syntax-checks `observe.mjs`, confirms the vendored primitives still match their `VENDOR.md` sha256 pins, and runs the Python verifier's tests against the vendored JS — catches a broken or silently-drifted commit before the next scheduled run hits it |
