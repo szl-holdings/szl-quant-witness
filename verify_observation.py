@@ -11,8 +11,9 @@ follows the same rules as the vendored JS primitives
 
 This module only verifies. It never signs and does not replace observe.mjs.
 It is stricter than the JS on malformed input: base64 must be well-formed,
-duplicate JSON keys are refused, and there is no trust-on-first-use fallback
-to an embedded key. Any failure is a refusal with a reason, never a pass.
+hashes must be exactly 64 hex digits, duplicate JSON keys are refused, and
+there is no trust-on-first-use fallback to an embedded key. Any failure is a
+refusal with a reason, never a pass.
 
 Usage:
     python verify_observation.py observations/obs_0422_*.observation.json
@@ -218,6 +219,7 @@ MAX_SAFE_INTEGER = 2**53 - 1
 _ORIGIN_RE = re.compile(r"[^\s]+ - [0-9]+")
 _TREE_SIZE_RE = re.compile(r"[0-9]+")
 _SIG_LINE_RE = re.compile("\u2014 ([^\\s]+) ([^\\s]+)")
+_HEX32_RE = re.compile(r"[0-9a-fA-F]{64}")
 
 
 def is_safe_integer(value):
@@ -232,13 +234,10 @@ def is_safe_integer(value):
 
 
 def _hex32(value, message):
-    try:
-        raw = bytes.fromhex(str(value))
-    except ValueError:
-        raise ObservationError(message) from None
-    if len(raw) != 32:
+    # Exactly 64 hex digits: bytes.fromhex alone would skip whitespace.
+    if not isinstance(value, str) or not _HEX32_RE.fullmatch(value):
         raise ObservationError(message)
-    return raw
+    return bytes.fromhex(value)
 
 
 def rfc6962_node_hash(left, right):
@@ -315,7 +314,9 @@ def parse_checkpoint(text):
         raise ObservationError("checkpoint rejected: malformed origin line")
     if not _TREE_SIZE_RE.fullmatch(lines[1]):
         raise ObservationError("checkpoint rejected: malformed tree-size line")
-    tree_size = int(lines[1])
+    # Too many significant digits to be safe: out of range without int(),
+    # which raises ValueError past Python's 4300-digit conversion limit.
+    tree_size = int(lines[1]) if len(lines[1].lstrip("0")) <= len(str(MAX_SAFE_INTEGER)) else 0
     if not 1 <= tree_size <= MAX_SAFE_INTEGER:
         raise ObservationError("checkpoint rejected: tree size out of range")
     try:
