@@ -11,6 +11,9 @@ concurrency:
 jobs:
   observe:
     runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+      data_commit: ${{ steps.publish.outputs.data_commit }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -25,6 +28,7 @@ jobs:
           git clone --quiet --depth 1 -b observations "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" obsdata
           SZL_OBS_OUT=obsdata SZL_OBSERVER_KEY="$RUNNER_TEMP/observer_key.pem" node observe.mjs
       - name: publish observation
+        id: publish
         if: always()
         run: |
           cd obsdata
@@ -34,8 +38,11 @@ jobs:
           if git diff --cached --quiet; then
             echo 'nothing to publish (observation unavailable — absence is honest)'
           else
+            published="$(git diff --cached --name-only --diff-filter=A -- 'observations/*.observation.json' | tr '\n' ' ')"
             git commit -m "obs: $(date -u +%FT%TZ) $(cat ../.last-verdict 2>/dev/null || echo UNAVAILABLE)"
             git push
+            echo "published=${published% }" >> "$GITHUB_OUTPUT"
+            echo "data_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           fi
       - name: alarm gate
         if: always()
@@ -46,3 +53,40 @@ jobs:
             PREFIX_OK|ROOTS_EQUAL) exit 0 ;;
             *) echo "::error::gossip observation verdict is an alarm: $V"; exit 1 ;;
           esac
+
+  # A second implementation re-checks what was just published: signature,
+  # Rekor checkpoint note, consistency replay and recorded verdict. Read-only
+  # and after the push, so it never changes what gets published; a refusal
+  # turns the run red.
+  verify-python:
+    needs: observe
+    if: always() && needs.observe.outputs.published != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Checkout the published observation commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.observe.outputs.data_commit }}
+          path: obsdata
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: verify the published observation in Python (signature + log-evidence replay)
+        env:
+          PUBLISHED: ${{ needs.observe.outputs.published }}
+        run: |
+          set -euo pipefail
+          files=()
+          for f in $PUBLISHED; do
+            [[ "$f" =~ ^observations/obs_[0-9]{4}_[0-9]+\.observation\.json$ ]] || { echo "::error::unexpected published path: $f"; exit 1; }
+            files+=("obsdata/$f")
+          done
+          python -m pip install --require-hashes --no-deps -r requirements-verify.txt
+          python verify_observation.py "${files[@]}"

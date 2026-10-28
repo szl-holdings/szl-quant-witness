@@ -76,7 +76,7 @@ python verify_observation.py observations/obs_0013_*.observation.json
 | `vendor/szl-quant/` | pinned primitives from the engine repo (`VENDOR.md` has the commit + hashes) |
 | `verify_observation.py` | Python verifier for published observations (DSSE, ed25519, pinned observer key) that also replays the log evidence (Rekor checkpoint note, RFC 6962 consistency, recorded verdict); tested against the vendored JS on the same inputs |
 | `requirements-verify.txt` | hash-pinned Python dependencies for the verifier (`cryptography` and its build chain) |
-| `.github/workflows/observe.yml` | every 6h, offset from the engine's schedule; SHA-pinned actions; a failing/alarming verdict turns the run red (non-zero exit) |
+| `.github/workflows/observe.yml` | every 6h, offset from the engine's schedule; SHA-pinned actions; a failing/alarming verdict turns the run red (non-zero exit); a read-only `verify-python` job then re-checks the observation just published with `verify_observation.py` (signature and log-evidence replay), and a refusal also turns the run red |
 | `.github/workflows/ci.yml` | on every push/PR to `main`: syntax-checks `observe.mjs`, confirms the vendored primitives still match their `VENDOR.md` sha256 pins, and runs the Python verifier's tests against the vendored JS — catches a broken or silently-drifted commit before the next scheduled run hits it |
 
 <sub>SZL Holdings · [a-11-oy.com](https://a-11-oy.com) · Doctrine v11 · REPORTED observations, replayed offline before signing · Apache-2.0 · **paper-only estate, not financial advice**</sub>
