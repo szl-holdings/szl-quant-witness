@@ -493,13 +493,20 @@ class CrossLanguageWitnessTests(unittest.TestCase):
         accepted = [label for (label, _), r in zip(statements.items(), js) if r["ok"]]
         self.assertEqual(accepted, ["seq 0", "seq 13", "largest safe seq"])
 
-    def test_python_also_requires_the_witness_predicate_type(self):
-        statement = witness_statement(13, predicateType="https://example.invalid/other")
-        signed = node({"op": "sign", "statements": [statement]})
+    def test_both_verifiers_require_the_witness_predicate_type(self):
+        missing = witness_statement(13)
+        del missing["predicateType"]
+        statements = [missing] + [witness_statement(13, predicateType=value) for value in (
+            None, "", "https://example.invalid/other", {},
+            "https://szl.holdings/quant/gossip-observation/v1",
+        )]
+        signed = node({"op": "sign", "statements": statements})
         js = node({"op": "verify", "envelopes": signed["envelopes"], "pin": signed["pin"]})
-        self.assertEqual(js, [{"ok": True, "value": 13}])
-        with self.assertRaisesRegex(vo.ObservationError, "unexpected predicateType"):
-            vw.verify_engine_witness(signed["envelopes"][0], signed["pin"])
+        for statement, envelope, result in zip(statements, signed["envelopes"], js):
+            with self.subTest(predicateType=statement.get("predicateType")):
+                self.assertFalse(result["ok"])
+                with self.assertRaisesRegex(vo.ObservationError, "unexpected predicateType"):
+                    vw.verify_engine_witness(envelope, signed["pin"])
 
     def test_filename_binding_matches_js(self):
         cases = [

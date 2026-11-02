@@ -2,6 +2,7 @@ import { verifyEnvelope } from './vendor/szl-quant/dsse.mjs';
 import { keyIdFromPublicKey, loadPublicKeyFromSpkiBase64 } from './vendor/szl-quant/keys.mjs';
 
 const IN_TOTO_STATEMENT = 'https://in-toto.io/Statement/v1';
+const WITNESS_PREDICATE = 'https://szl.holdings/quant/witness/v1';
 const WITNESS_KIND = 'szl-quant-witness';
 const WITNESS_NAME_RE = /^witness_(\d{4})_(\d+)\.receipt\.json$/;
 
@@ -30,6 +31,7 @@ export function verifyEngineWitnessEnvelope(envelope, enginePin) {
 
   const statement = verified.payload;
   if (statement?._type !== IN_TOTO_STATEMENT) throw new Error('engine witness payload is not an in-toto Statement/v1');
+  if (statement.predicateType !== WITNESS_PREDICATE) throw new Error('unexpected witness predicate type');
   const summary = statement?.predicate?.summary;
   if (summary?.kind !== WITNESS_KIND) throw new Error(`unexpected witness receipt kind: ${summary?.kind}`);
   if (!Number.isSafeInteger(summary?.chain?.seq) || summary.chain.seq < 0) throw new Error('engine witness chain sequence is invalid');

@@ -12,7 +12,7 @@ const statement = (seq = 13) => ({
   predicate: { summary: { kind: 'szl-quant-witness', chain: { seq } } },
 });
 
-function makeFixture(seq = 13) {
+function makeFixture(seq = 13, modifyStatement = (value) => value) {
   const { privateKey, publicKey } = generateEngineKeypair();
   const pin = {
     kind: 'szl-quant-engine-pubkey',
@@ -21,7 +21,7 @@ function makeFixture(seq = 13) {
     keyId: keyIdFromPublicKey(publicKey),
     publicKeySpkiBase64: publicKeySpkiBase64(publicKey),
   };
-  return { envelope: signEnvelope(statement(seq), privateKey, publicKey), pin };
+  return { envelope: signEnvelope(modifyStatement(statement(seq)), privateKey, publicKey), pin };
 }
 
 test('accepts a witness envelope signed by the pinned engine key', () => {
@@ -37,6 +37,43 @@ test('rejects payload tampering after signing', () => {
   const tampered = structuredClone(envelope);
   tampered.payload = Buffer.from(JSON.stringify(statement(14)), 'utf8').toString('base64');
   assert.throws(() => verifyEngineWitnessEnvelope(tampered, pin), /signature verification failed/);
+});
+
+test('rejects a valid engine signature over a different or missing predicate type', async (t) => {
+  const cases = [
+    ['missing', undefined],
+    ['null', null],
+    ['empty', ''],
+    ['observation', 'https://szl.holdings/quant/gossip-observation/v1'],
+    ['unknown version', 'https://szl.holdings/quant/witness/v2'],
+    ['trailing whitespace', 'https://szl.holdings/quant/witness/v1 '],
+    ['object', {}],
+    ['array', ['https://szl.holdings/quant/witness/v1']],
+  ];
+  for (const [name, predicateType] of cases) {
+    await t.test(name, () => {
+      const { envelope, pin } = makeFixture(13, (value) => {
+        if (predicateType === undefined) delete value.predicateType;
+        else value.predicateType = predicateType;
+        return value;
+      });
+      assert.throws(() => verifyEngineWitnessEnvelope(envelope, pin), /unexpected witness predicate type/);
+    });
+  }
+});
+
+test('preserves verification of the retained engine witness fixtures', () => {
+  const pin = JSON.parse(readFileSync(new URL('../keys/engine_pubkey.json', import.meta.url), 'utf8'));
+  for (const name of [
+    'witness_0001_1784228300881.receipt.json',
+    'witness_0009_1784226998334.receipt.json',
+    'witness_0009_1784228302184.receipt.json',
+    'witness_0425_1793212259840.receipt.json',
+  ]) {
+    const envelope = JSON.parse(readFileSync(new URL(`fixtures/${name}`, import.meta.url), 'utf8'));
+    const verified = verifyEngineWitnessEnvelope(envelope, pin);
+    assertWitnessFilenameBinding(name, verified.summary);
+  }
 });
 
 test('rejects a witness signed by a key other than the pinned engine key', () => {
