@@ -159,6 +159,7 @@ def load_observer_pin(pin):
     if (
         not isinstance(pin, dict)
         or pin.get("kind") != OBSERVER_PIN_KIND
+        or isinstance(pin.get("v"), bool)
         or pin.get("v") != 1
         or pin.get("alg") != "ed25519"
     ):

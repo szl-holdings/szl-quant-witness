@@ -170,6 +170,14 @@ class FailClosedTests(unittest.TestCase):
         with self.assertRaisesRegex(vo.ObservationError, "pin keyId mismatch"):
             vo.load_observer_pin(wrong_id)
 
+    def test_boolean_pin_version_cannot_validate_published_observation(self):
+        envelope = vo.loads_strict(FIXTURE.read_text(encoding="utf-8"))
+        self.assertEqual(vo.verify_observation(envelope, self.pin)["verdict"], "PREFIX_OK")
+        for version in (True, False):
+            with self.subTest(version=version):
+                with self.assertRaisesRegex(vo.ObservationError, "invalid observer public-key pin metadata"):
+                    vo.verify_observation(envelope, dict(self.pin, v=version))
+
     def test_duplicate_json_keys_are_refused(self):
         with self.assertRaisesRegex(ValueError, "duplicate JSON key"):
             vo.loads_strict('{"verdict":"SPLIT_VIEW","verdict":"PREFIX_OK"}')
