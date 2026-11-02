@@ -58,7 +58,7 @@ console.log(r.ok ? 'OK ' + r.payload.predicate.summary.verdict : 'FAIL ' + r.rea
 " observations/obs_0013_*.observation.json
 ```
 
-The same check in Python, against the pinned observer key (stricter on malformed input; it verifies only and never signs). By default it also replays each observation's log evidence against `keys/rekor_pubkey.pem`: the live checkpoint's signed note must verify and match the signed fields, and the RFC 6962 consistency proof must replay to the recorded verdict. `--no-replay` limits it to the signature check:
+The same check in Python, against the pinned observer key (stricter on malformed input; it verifies only and never signs). Both Python verifiers reject duplicate JSON keys, `NaN`/`Infinity` constants, and floating-point overflow in input envelopes, decoded signed payloads, and public-key pins. By default it also replays each observation's log evidence against `keys/rekor_pubkey.pem`: the live checkpoint's signed note must verify and match the signed fields, and the RFC 6962 consistency proof must replay to the recorded verdict. `--no-replay` limits it to the signature check:
 
 ```bash
 python -m pip install --require-hashes --no-deps -r requirements-verify.txt

@@ -11,7 +11,8 @@ follows the same rules as the vendored JS primitives
 
 This module only verifies. It never signs and does not replace observe.mjs.
 It is stricter than the JS on malformed input: base64 must be well-formed,
-hashes must be exactly 64 hex digits, duplicate JSON keys are refused, and
+hashes must be exactly 64 hex digits, duplicate JSON keys and non-finite
+JSON numbers are refused, and
 there is no trust-on-first-use fallback to an embedded key. Any failure is a
 refusal with a reason, never a pass.
 
@@ -35,6 +36,7 @@ import base64
 import binascii
 import hashlib
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -72,9 +74,25 @@ def _reject_duplicate_keys(pairs):
     return out
 
 
+def _reject_nonfinite_constant(value):
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
+def _finite_float(value):
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"non-finite JSON number: {value}")
+    return number
+
+
 def loads_strict(data):
-    """json.loads that refuses duplicate object keys (fail closed)."""
-    return json.loads(data, object_pairs_hook=_reject_duplicate_keys)
+    """Refuse duplicate keys, non-JSON constants and floating-point overflow."""
+    return json.loads(
+        data,
+        object_pairs_hook=_reject_duplicate_keys,
+        parse_constant=_reject_nonfinite_constant,
+        parse_float=_finite_float,
+    )
 
 
 def b64decode_strict(text):
