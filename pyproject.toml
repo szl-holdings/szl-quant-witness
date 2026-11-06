@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "szl-quant-witness"
+version = "0.1.0"
+description = "Second observer for the szl-quant ledger — independent scheduled vantage point that cross-logs signed gossip observations (REPORTED, offline-replayable). Paper-only estate; not financial advice."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{ name = "Stephen Lutar", email = "stephen@szlholdings.com" }]
+dependencies = ["cryptography==50.0.2", "cffi==2.1.1", "pycparser==3.11"]
+
+[project.urls]
+Homepage = "https://a-11-oy.com"
+Repository = "https://github.com/szl-holdings/szl-quant-witness"
+
+[tool.setuptools]
+py-modules = ["verify_observation", "verify_witness"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["build", "dist", ".venv", "node_modules"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
