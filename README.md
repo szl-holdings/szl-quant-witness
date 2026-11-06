@@ -87,3 +87,9 @@ python verify_witness.py witness/witness_0425_*.receipt.json
 | `.github/workflows/ci.yml` | on every push/PR to `main`: syntax-checks `observe.mjs`, confirms the vendored primitives still match their `VENDOR.md` sha256 pins, and runs the Python verifier's tests against the vendored JS — catches a broken or silently-drifted commit before the next scheduled run hits it |
 
 <sub>SZL Holdings · [a-11-oy.com](https://a-11-oy.com) · Doctrine v11 · REPORTED observations, replayed offline before signing · Apache-2.0 · **paper-only estate, not financial advice**</sub>
+
+Estate on Hugging Face: models, datasets and Spaces are published under the [SZLHOLDINGS](https://huggingface.co/SZLHOLDINGS) org.
+
+## License
+
+Apache-2.0 — see [LICENSE](LICENSE).
