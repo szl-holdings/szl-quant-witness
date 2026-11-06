@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 authors = [{ name = "Stephen Lutar", email = "stephen@szlholdings.com" }]
-dependencies = ["cryptography==50.0.2 \\", "cffi==2.1.1 \\", "pycparser==3.11 \\"]
+dependencies = ["cryptography==50.0.2", "cffi==2.1.1", "pycparser==3.11"]
 
 [project.urls]
 Homepage = "https://a-11-oy.com"
