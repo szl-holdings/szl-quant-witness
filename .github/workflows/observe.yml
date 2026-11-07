@@ -4,12 +4,14 @@ on:
     - cron: '13 2,8,14,20 * * *'   # offset ~3h from the engine's runs so vantage points interleave
   workflow_dispatch: {}
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: observe
   cancel-in-progress: false
 jobs:
   observe:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     outputs:
       published: ${{ steps.publish.outputs.published }}
