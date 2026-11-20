@@ -33,6 +33,10 @@ export function appendObservationIndex(path, row) {
     }
     // A later pathname replacement cannot redirect a write through this fd.
     fs.writeFileSync(fd, (opened.size === 0n ? OBSERVATION_HEADER : '') + row);
+    // Flush the opened index before returning success. This does not fsync
+    // the separately written observation envelope or a new directory entry.
+    // On a failed flush, callers must inspect bytes before any retry.
+    fs.fsyncSync(fd);
   } finally {
     fs.closeSync(fd);
   }
