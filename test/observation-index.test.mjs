@@ -128,3 +128,38 @@ test('replacement after validation cannot redirect the descriptor write', (t) =>
   assert.equal(fs.readFileSync(path, 'utf8'), 'replacement must stay unchanged\n');
   assert.equal(fs.readFileSync(moved, 'utf8'), 'original\nnew row\n');
 });
+
+test('successful append fsyncs the opened index descriptor before returning', (t) => {
+  const path = join(directory(t), 'index.md');
+  const originalSync = fs.fsyncSync;
+  let syncs = 0;
+  fs.fsyncSync = (fd) => { syncs += 1; return originalSync(fd); };
+  try {
+    appendObservationIndex(path, '| new row |\n');
+  } finally {
+    fs.fsyncSync = originalSync;
+  }
+  assert.equal(syncs, 1);
+  assert.equal(fs.readFileSync(path, 'utf8'), OBSERVATION_HEADER + '| new row |\n');
+});
+
+test('failed index fsync is not success, closes fd, and requires reconciliation before retry', (t) => {
+  const path = join(directory(t), 'index.md');
+  fs.writeFileSync(path, 'old row\n');
+  const originalSync = fs.fsyncSync;
+  const originalClose = fs.closeSync;
+  let attempts = 0;
+  let closes = 0;
+  fs.fsyncSync = () => { attempts += 1; throw new Error('simulated index fsync failure'); };
+  fs.closeSync = (...args) => { closes += 1; return originalClose(...args); };
+  try {
+    assert.throws(() => appendObservationIndex(path, 'new row\n'), /simulated index fsync failure/);
+  } finally {
+    fs.fsyncSync = originalSync;
+    fs.closeSync = originalClose;
+  }
+  assert.equal(attempts, 1);
+  assert.equal(closes, 1);
+  // A write may be visible even when the flush fails: never blindly retry.
+  assert.equal(fs.readFileSync(path, 'utf8'), 'old row\nnew row\n');
+});
